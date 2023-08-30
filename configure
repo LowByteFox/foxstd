@@ -21,7 +21,7 @@
 #   --extra-cflags=          specify compiler flags [-Wall -g -O2]
 #   --extra-ldflags=         specify linker options []
 #   --strip-binaries         strip symbol tables from resulting binaries
-#   --disable-static         make libtcc.so instead of libtcc.a
-#   --enable-static          make libtcc.a instead of libtcc.dll (win32)
+#   --disable-static         disable generation of static libraries
+#   --enable-static          enable generation of static libraries
 
 echo "Nothing to configure yet"
