@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Usage: configure [options]
+# Options: [defaults in brackets after descriptions]
+# 
+# Standard options:
+#   --help                   print this message
+#   --devmode                enables extra utilities for development on foxstd
+#   --prefix=PREFIX          install in PREFIX [/usr/local]
+#   --libdir=DIR             object code libraries in DIR [PREFIX/lib]
+#   --foxdir=DIR             installation directory [LIBDIR/fox]
+#   --includedir=DIR         C header files in DIR [PREFIX/include]
+#   --sharedir=DIR           documentation root DIR [PREFIX/share]
+#   --docdir=DIR             documentation in DIR [SHAREDIR/doc/fox]
+#   --mandir=DIR             man documentation in DIR [SHAREDIR/man]
+#   --infodir=DIR            info documentation in DIR [SHAREDIR/info]
+# 
+# Advanced options (experts only):
+#   --cc=CC                  use C compiler CC [gcc]
+#   --ar=AR                  create archives using AR [ar]
+#   --extra-cflags=          specify compiler flags [-Wall -g -O2]
+#   --extra-ldflags=         specify linker options []
+#   --strip-binaries         strip symbol tables from resulting binaries
+#   --disable-static         make libtcc.so instead of libtcc.a
+#   --enable-static          make libtcc.a instead of libtcc.dll (win32)
+
+echo "Nothing to configure yet"
