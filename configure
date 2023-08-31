@@ -5,7 +5,6 @@ Options: [defaults in brackets after descriptions]
 
 Standard options:
   --help                   print this message
-  --devmode                enables extra utilities for development on foxstd
   --prefix PREFIX          install in PREFIX [/usr/local]
 
 Advanced options (experts only):
@@ -14,28 +13,35 @@ Advanced options (experts only):
   --extra-cflags FLAGS     specify compiler flags [-Wall -g -O2]
   --extra-ldflags FLAGS    specify linker options []
   --strip-binaries         strip symbol tables from resulting binaries
-  --enable-static          enable generation of static libraries"
+  --enable-static          enable generation of static libraries
+  --enable-debug           enable debug symbols"
 
-DEVMODE=false
-PREFIX="/usr/local"
+SRCDIR=$PWD
+PREFIX=/usr/local
 CC="gcc"
 AR="ar"
 STRIP_BINARIES=false
+DEBUG=false
 EXTRA_CFLAGS=("-Wall" "-O2")
-EXTRA_LDFLAGS=("")
+EXTRA_LDFLAGS=()
 STATIC=false
 
-# parse args
+compileFile() {
+    OUTFILE="${1/%.c/.o}"
+    OUTFILE="${OUTFILE/$SRCDIR\/src/$SRCDIR\/build}"
+    echo "mkdir -p $(dirname "$OUTFILE")"
+    printf "    %s -c %s -o %s %s" "$CC" "$1" "$OUTFILE" "${EXTRA_CFLAGS[*]}"
+}
+
+export -f compileFile
+
+CMD="$0 $*"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         --help)
             echo "$HELP_MSG"
             exit 0
-            ;;
-        --devmode)
-            DEVMODE=true
-            shift
             ;;
         --prefix)
             PREFIX="$2"
@@ -61,9 +67,9 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --extra-ldflags)
-            EXTRA_LDLAGS=()
+            EXTRA_LDFLAGS=()
             for i in $2; do
-                EXTRA_LDLAGS+=("$i")
+                EXTRA_LDFLAGS+=("$i")
             done
             shift
             shift
@@ -76,6 +82,10 @@ while [[ $# -gt 0 ]]; do
             STATIC=true
             shift
             ;;
+        --enable-debug)
+            DEBUG=true
+            shift
+            ;;
         *)
             echo Invalid option \""$1"\"
             echo "$HELP_MSG"
@@ -83,12 +93,11 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-
-if [ $STRIP_BINARIES == false ]; then
+if [ $DEBUG == true ]; then
     EXTRA_CFLAGS+=("-g")
 fi
 
-printf "Devmode:\t%s
+printf "Source Dir:\t%s
 Prefix:\t\t%s
 CC:\t\t%s
 AR:\t\t%s
@@ -96,4 +105,94 @@ Strip:\t\t%s
 CFlags:\t\t%s
 LDFlags:\t%s
 Static:\t\t%s
-" $DEVMODE "$PREFIX" "$CC" "$AR" $STRIP_BINARIES "${EXTRA_CFLAGS[*]}" "${EXTRA_LDFLAGS[*]}" $STATIC
+Debug:\t\t%s
+" "$SRCDIR" "$PREFIX" "$CC" "$AR" $STRIP_BINARIES "${EXTRA_CFLAGS[*]}" "${EXTRA_LDFLAGS[*]}" $STATIC $DEBUG
+
+if ! test -d "$SRCDIR/src"; then
+    echo "Missing src directory"
+    exit 1
+fi
+
+files=()
+
+for file in $(find "$SRCDIR/src" -name "*.c" 2> /dev/null); do
+    files+=("$file")
+done
+
+fnExists() {
+    declare -f -F $1 > /dev/null
+    return $?
+}
+
+build_sh="#!/bin/bash
+# File generated with $CMD
+# However feel free to edit this
+SRCDIR=$SRCDIR
+PREFIX=$PREFIX
+CC=\"$CC\"
+AR=\"$AR\"
+CFLAGS=(${EXTRA_CFLAGS[*]})
+LDFLAGS=(${EXTRA_LDFLAGS[*]})
+STRIP_BINARIES=$STRIP_BINARIES
+STATIC=$STATIC
+DEBUG=$DEBUG
+SOURCES=(${files[*]})
+TARGETS=("
+
+. ./targets.sh
+declare -A TARGETS
+
+if ! fnExists generateTargets || ! fnExists getBaseTarget; then
+    echo "No \"generateTargets\" & \"getBaseTarget\" functions found!"
+    exit 1
+else
+    for file in "${files[@]}"; do
+        generated_target=$(generateTargets "$file")
+        if [[ -v TARGETS["$generated_target"] ]]; then
+            TARGETS["$generated_target"]+=" $file"
+        else
+            build_sh+="\"$generated_target\" "
+            TARGETS["$generated_target"]=""
+            TARGETS["$generated_target"]+="$file"
+        fi
+    done
+fi
+
+build_sh+=")
+"
+
+for key in "${!TARGETS[@]}"; do
+    build_sh+="
+$key() {
+"
+    for file in ${TARGETS["$key"]}; do
+        line=$(getBaseTarget "$key" "$file")
+        build_sh+="    $line
+"
+    done
+    build_sh+="}
+"
+done
+
+
+if test -d "$SRCDIR/.build.sh"; then
+    for file in $(find "$SRCDIR/.build.sh/" -type f 2> /dev/null); do
+        build_sh+="
+        $(cat "$file")
+        "
+    done
+else
+    build_sh+="
+"
+fi
+
+build_sh+="for arg in \"\$@\"; do
+    if [[ \" \${TARGETS[*]} \" =~ \" \$arg \" ]]; then
+        \"\$arg\"
+    fi
+done"
+
+echo "$build_sh" > build.sh
+chmod +x build.sh
+
+echo "build.sh generated"
