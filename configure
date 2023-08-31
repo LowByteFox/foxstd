@@ -179,7 +179,7 @@ if test -d "$SRCDIR/.build.sh"; then
     for file in $(find "$SRCDIR/.build.sh/" -type f 2> /dev/null); do
         build_sh+="
 $(cat "$file")
-        "
+"
     done
 else
     build_sh+="
